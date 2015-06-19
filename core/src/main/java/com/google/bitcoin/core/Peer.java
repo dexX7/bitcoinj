@@ -1414,13 +1414,14 @@ public class Peer extends PeerSocketHandler {
         return ping((long) (Math.random() * Long.MAX_VALUE));
     }
 
-    protected ListenableFuture<Long> ping(long nonce) throws ProtocolException {
+    public ListenableFuture<Long> ping(long nonce) throws ProtocolException {
         final VersionMessage ver = vPeerVersionMessage;
         if (!ver.isPingPongSupported())
             throw new ProtocolException("Peer version is too low for measurable pings: " + ver);
         PendingPing pendingPing = new PendingPing(nonce);
         pendingPings.add(pendingPing);
         sendMessage(new Ping(pendingPing.nonce));
+        log.info("created ping with nonce: {}", nonce);
         return pendingPing.future;
     }
 
@@ -1461,6 +1462,7 @@ public class Peer extends PeerSocketHandler {
         // Iterates over a snapshot of the list, so we can run unlocked here.
         for (PendingPing ping : pendingPings) {
             if (m.getNonce() == ping.nonce) {
+                log.info("clearing pong with nonce: {} (pending: {})", m.getNonce(), pendingPings.size());
                 pendingPings.remove(ping);
                 // This line may trigger an event listener that re-runs ping().
                 ping.complete();
